@@ -31,6 +31,12 @@ jobs:
     - name: Install Android SDK Build-Tools 35
       run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;35.0.0"
 
+    - name: Create mock environment files
+      run: |
+        touch .env
+        touch .env.example
+        keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
     - name: Build Release APK
       run: ./gradlew assembleRelease
 
