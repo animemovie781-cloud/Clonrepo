@@ -63,8 +63,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             lint {
                 checkReleaseBuilds = false
             }
@@ -74,6 +74,8 @@ android {
             )
             if (keystoreProperties.containsKey("AMAYA_KEYSTORE_PASSWORD")) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debugConfig")
             }
         }
         debug {
