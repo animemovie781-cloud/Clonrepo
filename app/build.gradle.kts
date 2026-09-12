@@ -21,7 +21,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.amaya.intelligence"
+        applicationId = "com.aistudio.amaya.xkvpzm"
         minSdk = 26
         targetSdk = 34
         versionCode = 4
@@ -45,6 +45,12 @@ android {
     }
 
     signingConfigs {
+        create("debugConfig") {
+            storeFile = file("${rootDir}/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         create("release") {
             if (keystoreProperties.containsKey("AMAYA_KEYSTORE_PASSWORD")) {
                 storeFile = file("../release.keystore")
@@ -73,6 +79,7 @@ android {
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debugConfig")
         }
         // Profileable production-like build for daily performance testing. It uses
         // release code/resources, debug signing, and deliberately skips R8/shrinking.
@@ -81,7 +88,7 @@ android {
             initWith(buildTypes.getByName("release"))
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("debugConfig")
             matchingFallbacks += listOf("release")
         }
     }
