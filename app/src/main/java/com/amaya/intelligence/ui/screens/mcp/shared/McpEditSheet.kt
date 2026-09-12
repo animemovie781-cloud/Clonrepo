@@ -19,6 +19,7 @@ fun McpEditSheet(
     initialJson: String,
     onDismiss: () -> Unit,
     onSave: (String) -> Unit,
+    title: String = "MCP Configuration",
     modifier: Modifier = Modifier
 ) {
 
@@ -44,7 +45,7 @@ fun McpEditSheet(
 
     com.amaya.intelligence.ui.components.shared.StandardModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = "MCP Configuration"
+        title = title
     ) {
         com.amaya.intelligence.ui.screens.amaya.AmayaSection("JSON Configuration") {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {

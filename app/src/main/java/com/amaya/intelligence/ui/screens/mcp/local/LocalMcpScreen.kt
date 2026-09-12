@@ -46,15 +46,31 @@ fun LocalMcpScreen(
     }
 
     var showAddSheet by remember { mutableStateOf(false) }
-    var editorJson by remember { mutableStateOf(settings.mcpConfigJson) }
+    // null = adding new server, non-null = editing this specific server's full config JSON
+    var editorJson by remember { mutableStateOf<String?>(null) }
     val topPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 72.dp
 
-    fun openEditor() {
-        scope.launch {
-            val latestJson = aiSettingsManager.loadMcpConfigFromFixedPath()
-            editorJson = latestJson ?: settings.mcpConfigJson
-            showAddSheet = true
-        }
+    /** Opens the sheet with a blank template to add a brand-new server. */
+    fun openAddSheet() {
+        editorJson = null
+        showAddSheet = true
+    }
+
+    /** Opens the sheet pre-filled with [server]'s JSON so only that entry is edited. */
+    fun openEditSheet(server: com.amaya.intelligence.data.remote.api.McpServerConfig) {
+        val serverJson = org.json.JSONObject().apply {
+            put("mcpServers", org.json.JSONObject().apply {
+                put(server.name, org.json.JSONObject().apply {
+                    put("serverUrl", server.serverUrl)
+                    if (server.headers.isNotEmpty()) {
+                        put("headers", org.json.JSONObject(server.headers))
+                    }
+                    put("enabled", server.enabled)
+                })
+            })
+        }.toString(2)
+        editorJson = serverJson
+        showAddSheet = true
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -79,7 +95,7 @@ fun LocalMcpScreen(
         Box(modifier = Modifier.fillMaxSize().background(colors.groupedBackground)) {
             McpServerList(
                 servers = mcpConfig.servers,
-                onServerClick = { openEditor() },
+                onServerClick = { server -> openEditSheet(server) },
                 onToggleEnabled = { server, enabled ->
                     scope.launch {
                         val updated = mcpConfig.servers.map {
@@ -117,8 +133,8 @@ fun LocalMcpScreen(
                 actions = {
                     com.amaya.intelligence.ui.components.shared.AmayaTopBarButton(
                         icon = Icons.Default.Add,
-                        onClick = { openEditor() },
-                        contentDescription = "Edit MCP Config",
+                        onClick = { openAddSheet() },
+                        contentDescription = "Add MCP Server",
                         modifier = Modifier.padding(end = 12.dp)
                     )
                 },
@@ -133,14 +149,38 @@ fun LocalMcpScreen(
     }
 
     if (showAddSheet) {
+        val isEditing = editorJson != null
         McpEditSheet(
-            initialJson = editorJson,
+            initialJson = editorJson ?: "",
+            title = if (isEditing) "Edit MCP Server" else "Add MCP Server",
             onDismiss = { showAddSheet = false },
             onSave = { json ->
                 showAddSheet = false
                 scope.launch {
-                    aiSettingsManager.setMcpConfigJson(json)
-                    snackbarHostState.showSnackbar("mcp.json saved ✓")
+                    if (isEditing) {
+                        // Editing: merge the updated single-server entry into the full config
+                        val updatedSingle = com.amaya.intelligence.data.remote.api.McpConfig.fromJson(json)
+                        val latestJson = aiSettingsManager.loadMcpConfigFromFixedPath() ?: settings.mcpConfigJson
+                        val existing = com.amaya.intelligence.data.remote.api.McpConfig.fromJson(latestJson)
+                        // Replace only the servers present in updatedSingle; keep the rest
+                        val updatedNames = updatedSingle.servers.map { it.name }.toSet()
+                        val merged = existing.servers.filter { it.name !in updatedNames } + updatedSingle.servers
+                        aiSettingsManager.setMcpConfigJson(
+                            com.amaya.intelligence.data.remote.api.McpConfig(merged).toJson()
+                        )
+                        snackbarHostState.showSnackbar("Server updated ✓")
+                    } else {
+                        // Adding: merge the new server(s) into the existing config
+                        val newEntries = com.amaya.intelligence.data.remote.api.McpConfig.fromJson(json)
+                        val latestJson = aiSettingsManager.loadMcpConfigFromFixedPath() ?: settings.mcpConfigJson
+                        val existing = com.amaya.intelligence.data.remote.api.McpConfig.fromJson(latestJson)
+                        val newNames = newEntries.servers.map { it.name }.toSet()
+                        val merged = existing.servers.filter { it.name !in newNames } + newEntries.servers
+                        aiSettingsManager.setMcpConfigJson(
+                            com.amaya.intelligence.data.remote.api.McpConfig(merged).toJson()
+                        )
+                        snackbarHostState.showSnackbar("Server added ✓")
+                    }
                 }
             }
         )
