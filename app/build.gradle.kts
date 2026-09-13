@@ -63,8 +63,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             lint {
                 checkReleaseBuilds = false
             }
